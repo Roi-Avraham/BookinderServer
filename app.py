@@ -1,7 +1,7 @@
 import os
 
 import flask
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, render_template, request, url_for, redirect, jsonify
 from flask_sqlalchemy import SQLAlchemy
 
 from sqlalchemy.sql import func
@@ -12,7 +12,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = \
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-
+############################################################################
 class Users(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -27,9 +27,9 @@ class Users(db.Model):
 
 class Books(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(1000), nullable=False)
-    writer_name = db.Column(db.String(1000), nullable=False)
-    genre = db.Column(db.String(800), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    writer_name = db.Column(db.String(100), nullable=False)
+    genre = db.Column(db.String(80), nullable=False)
 
     def __repr__(self):
         return f'<Book {self.name}>'
@@ -47,7 +47,7 @@ class Rates(db.Model):
 with app.app_context():
     db.drop_all()
     db.create_all()
-
+########################################################################
 @app.route('/', methods = ['GET', 'POST'])
 def start():
     msg_received = flask.request.get_json()
@@ -115,25 +115,25 @@ def add_book_manually():
         print("Error while inserting the new record :", repr(e))
         return "failure"
 
+@app.route('/getBooksYouEntered', methods = ['GET', 'POST'])
+def get_books_you_entered():
+    msg_received = flask.request.get_json()
+    current_user = msg_received["current_user"]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    all_love_books = [[]]
+    love_book = []
+    user_id = Users.query.filter_by(email=current_user).first().id
+    all_rates = Rates.query.filter_by(id=user_id).all()
+    for element in all_rates:
+        name_of_book = Books.query.filter_by(id=element.book_id).first().name
+        name_of_writer = Books.query.filter_by(id=element.book_id).first().writer_name
+        genre = Books.query.filter_by(id=element.book_id).first().genre
+        love_book.append(name_of_book)
+        love_book.append(name_of_writer)
+        love_book.append(genre)
+        love_book.append(element.rate)
+        all_love_books.append(love_book)
+    return jsonify({"all_love_books": all_love_books})
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
