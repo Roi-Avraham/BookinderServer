@@ -1,7 +1,8 @@
+import json
 import os
 
 import flask
-from flask import Flask, render_template, request, url_for, redirect, jsonify
+from flask import Flask, render_template, request, url_for, redirect, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
 
 from sqlalchemy.sql import func
@@ -120,20 +121,22 @@ def get_books_you_entered():
     msg_received = flask.request.get_json()
     current_user = msg_received["current_user"]
 
-    all_love_books = [[]]
-    love_book = []
+    love_book = {}
     user_id = Users.query.filter_by(email=current_user).first().id
-    all_rates = Rates.query.filter_by(id=user_id).all()
-    for element in all_rates:
-        name_of_book = Books.query.filter_by(id=element.book_id).first().name
-        name_of_writer = Books.query.filter_by(id=element.book_id).first().writer_name
-        genre = Books.query.filter_by(id=element.book_id).first().genre
-        love_book.append(name_of_book)
-        love_book.append(name_of_writer)
-        love_book.append(genre)
-        love_book.append(element.rate)
-        all_love_books.append(love_book)
-    return jsonify({"all_love_books": all_love_books})
+    all_rates = Rates.query.filter_by(user_id=user_id).all()
+    if(len(all_rates) != 0):
+        index = 0
+        love_book["number"] = str(len(all_rates))
+        for element in all_rates:
+            name_of_book = Books.query.filter_by(id=element.book_id).first().name
+            name_of_writer = Books.query.filter_by(id=element.book_id).first().writer_name
+            genre = Books.query.filter_by(id=element.book_id).first().genre
+            love_book["name_of_book" + str(index)] = name_of_book
+            love_book["name_of_writer" + str(index)] = name_of_writer
+            love_book["genre" + str(index)] = genre
+            love_book["rate" + str(index)] = element.rate
+            index = index + 1
+    return json.dumps(love_book)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
