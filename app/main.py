@@ -96,6 +96,15 @@ def get_books_you_entered():
             index = index + 1
     return json.dumps(love_book)
 
+@app.route('/images/<image_name>')
+def get_image(image_name):
+    im_path = 'resources/images/' + image_name
+    if os.path.exist(im_path):
+        image = open(im_path, 'rb')
+        # Send the image data back to the client
+        return send_file(image, mimetype='image/png')
+    return "failure"
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
 

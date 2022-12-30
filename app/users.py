@@ -7,6 +7,7 @@ class Users(db.Model):
     email = db.Column(db.String(80), unique=True, nullable=False)
     age = db.Column(db.Integer)
     phone_number = db.Column(db.String(100), nullable=False)
+    image_address = db.Column(db.String(100))
 
     def __repr__(self):
         return f'<User {self.email}>'
