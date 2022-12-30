@@ -12,4 +12,3 @@ class Cards(db.Model):
 
 def get_card(id):
     return Cards.query.filter_by(id=id).first()
-

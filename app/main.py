@@ -2,6 +2,7 @@ from app import app, db
 from users import Users
 from books import Books
 from rates import Rates
+import os
 ############################################################################
 with app.app_context():
     db.drop_all()
@@ -96,10 +97,11 @@ def get_books_you_entered():
             index = index + 1
     return json.dumps(love_book)
 
-@app.route('/images/<image_name>')
+
+@app.route('/images/<image_name>', methods=['GET'])
 def get_image(image_name):
     im_path = 'resources/images/' + image_name
-    if os.path.exist(im_path):
+    if os.path.exists(im_path):
         image = open(im_path, 'rb')
         # Send the image data back to the client
         return send_file(image, mimetype='image/png')
