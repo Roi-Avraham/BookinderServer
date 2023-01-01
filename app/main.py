@@ -127,7 +127,7 @@ def update_profile(user_id):
     image = request.files['image']
     host = request.headers['Host']
     user = get_user(user_id)
-    user.profile_pic = image_to_url(image, host)
+    user.profile_pic = image_to_url(image, user_id, host)
     update_user(user_id, user)
 
 
@@ -152,20 +152,20 @@ def get_card_route(card_id):
     return json.dumps(dic)
 
 
-@app.route('items/exchange/<int:user_id>', methods=['GET'])
+@app.route('/items/exchange/<int:user_id>', methods=['GET'])
 def get_cards_exchange(user_id):
     all_cards = get_all_by_method_and_user('exchange', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
 
-@app.route('items/sale/<int:user_id>', methods=['GET'])
+@app.route('/items/sale/<int:user_id>', methods=['GET'])
 def get_cards_sale(user_id):
     all_cards = get_all_by_method_and_user('sale', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
 
 
-@app.route('items/sale/<int:user_id>', methods=['GET'])
+@app.route('/items/sale/<int:user_id>', methods=['GET'])
 def get_user_route(user_id):
     user = get_user(user_id)
     dic = {
