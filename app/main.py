@@ -1,7 +1,11 @@
 from app import app, db, HOST
-from users import Users
-from books import Books
-from rates import Rates
+import flask
+from app.models import Users, Books, Rates, Cards
+from app.models.cards import upload_book, get_card, get_all_by_method_and_user
+from app.models.books import get_book
+from app.models.users import get_user, update_user
+from flask import send_file, json, request
+from utils import image_to_url
 import os
 ############################################################################
 with app.app_context():
@@ -107,6 +111,60 @@ def get_image(image_name):
         # Send the image data back to the client
         return send_file(image, mimetype='image/png')
     return "failure"
+
+
+@app.route('/upload_book', methods=['POST'])
+def upload_book():
+    book_data = request.form['card']
+    image = request.files['image']
+    host = request.headers['Host']
+    book_card = upload_book(book_data, image, host)
+    return book_card.id
+
+
+@app.route('/update_profile_pic/<int:user_id>', methods=['POST'])
+def update_profile(user_id):
+    image = request.files['image']
+    host = request.headers['Host']
+    user = get_user(user_id)
+    user.profile_pic = image_to_url(image, host)
+    update_user(user_id, user)
+
+
+
+@app.route('/items/<int:card_id>')
+def get_card_route(card_id):
+    card = get_card(card_id)
+    book_id = card.book_id
+    seller_id = card.user_id
+    book = get_book(book_id)
+    seller = get_user(seller_id)
+    dic = {
+        'title': book.name,
+        'author': book.writer_name,
+        'book_image': card.image_address,
+        'method': card.method,
+        'price': card.price,
+        'genre': book.genre,
+        'seller_id': seller_id,
+        'name': seller.name,
+        'seller_image': seller.image_address
+    }
+    return json.dumps(dic)
+
+
+@app.route('items/exchange/<int:user_id')
+def get_cards_exchange(user_id):
+    all_cards = get_all_by_method_and_user('exchange', user_id)
+    lst = [card.id for card in all_cards]
+    return json.dumps(lst)
+
+@app.route('items/sale/<int:user_id')
+def get_cards_sale(user_id):
+    all_cards = get_all_by_method_and_user('sale', user_id)
+    lst = [card.id for card in all_cards]
+    return json.dumps(lst)
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=HOST, debug=True, threaded=True)
