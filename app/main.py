@@ -131,8 +131,7 @@ def update_profile(user_id):
     update_user(user_id, user)
 
 
-
-@app.route('/items/<int:card_id>')
+@app.route('/items/<int:card_id>', methods=['GET'])
 def get_card_route(card_id):
     card = get_card(card_id)
     book_id = card.book_id
@@ -153,18 +152,31 @@ def get_card_route(card_id):
     return json.dumps(dic)
 
 
-@app.route('items/exchange/<int:user_id')
+@app.route('items/exchange/<int:user_id>', methods=['GET'])
 def get_cards_exchange(user_id):
     all_cards = get_all_by_method_and_user('exchange', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
 
-@app.route('items/sale/<int:user_id')
+@app.route('items/sale/<int:user_id>', methods=['GET'])
 def get_cards_sale(user_id):
     all_cards = get_all_by_method_and_user('sale', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
 
+
+@app.route('items/sale/<int:user_id>', methods=['GET'])
+def get_user_route(user_id):
+    user = get_user(user_id)
+    dic = {
+        'name': user.name,
+        'age': user.age,
+        'phone': user.phone_number,
+        'mail': user.email,
+        'genres': user.fave_genres,
+        'image_address': user.image_address
+    }
+    return json.dumps(dic)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=HOST, debug=True, threaded=True)
