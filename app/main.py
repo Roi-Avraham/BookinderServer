@@ -1,4 +1,4 @@
-from app import app, db
+from app import app, db, HOST
 from users import Users
 from books import Books
 from rates import Rates
@@ -10,6 +10,7 @@ with app.app_context():
 ########################################################################
 @app.route('/', methods = ['GET', 'POST'])
 def start():
+    print('hi')
     msg_received = flask.request.get_json()
     msg_subject = msg_received["subject"]
 
@@ -108,5 +109,5 @@ def get_image(image_name):
     return "failure"
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+    app.run(host="0.0.0.0", port=HOST, debug=True, threaded=True)
 
