@@ -127,7 +127,7 @@ def update_profile(user_id):
     image = request.files['image']
     host = request.headers['Host']
     user = get_user(user_id)
-    user.profile_pic = image_to_url(image, user_id, host)
+    user.profile_pic = image_to_url(image, 'profile', user_id, host)
     update_user(user_id, user)
 
 

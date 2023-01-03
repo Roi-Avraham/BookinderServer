@@ -35,7 +35,7 @@ def upload_book(msg_received, image, host):
     book_card = Cards(user_id=user_id, book_id=book_id, method=method, price=price)
     db.session.add(book_card)
     db.session.commit()
-    book_card.image_address = image_to_url(image, book_card.book_id, host)
+    book_card.image_address = image_to_url(image, 'book', book_card.book_id, host)
     db.session.add(book_card)
     db.session.commit()
     return book_card
