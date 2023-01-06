@@ -7,7 +7,7 @@ class Cards(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
     book_id = db.Column(db.Integer, nullable=False)
-    image_address = db.Column(db.String(100), nullable=False)
+    image_address = db.Column(db.String(100))
     method = db.Column(db.String(10), nullable=False)
     price = db.Column(db.Float)
 
@@ -21,21 +21,22 @@ def get_all_by_method_and_user(method, user_id):
 
 
 def upload_book(msg_received, image, host):
-    user_id = msg_received['user_id']
+    user_id = msg_received["user_id"]
     name_of_book = msg_received["name_of_book"]
     name_of_writer = msg_received["name_of_writer"]
     method = msg_received["method"]
-    if method == "selling":
+    genre = msg_received["genre"]
+    if method == "sale":
         price = float(msg_received["price"])
     elif method == "exchange":
         price = 0.0
     else:
         return "failure: expected \"selling\" or \"exchange\" in method name"
-    book_id = get_book_by_name_and_writer(name_of_book, name_of_writer).id
+    book_id = get_book_by_name_and_writer(name_of_book, name_of_writer,genre).id
     book_card = Cards(user_id=user_id, book_id=book_id, method=method, price=price)
     db.session.add(book_card)
     db.session.commit()
-    book_card.image_address = image_to_url(image, book_card.book_id, host)
+    book_card.image_address = image_to_url(image,'book', book_card.book_id, host)
     db.session.add(book_card)
     db.session.commit()
     return book_card

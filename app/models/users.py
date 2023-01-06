@@ -8,7 +8,6 @@ class Users(db.Model):
     age = db.Column(db.Integer)
     phone_number = db.Column(db.String(100), nullable=False)
     image_address = db.Column(db.String(100))
-    profile_pic = db.Column(db.String(100))
     fave_genres = db.Column(db.String(100))
     def __repr__(self):
         return f'<User {self.email}>'
