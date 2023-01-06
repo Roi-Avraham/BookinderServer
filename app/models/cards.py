@@ -41,3 +41,6 @@ def upload_book(msg_received, image, host):
     db.session.commit()
     return book_card
 
+
+def get_all_cards_for_user(user_id):
+    return Cards.query.all()

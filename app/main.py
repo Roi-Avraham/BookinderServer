@@ -1,8 +1,9 @@
 from app import app, db, HOST
 import flask
 from app.models import Users, Books, Rates, Cards
-from app.models.cards import upload_book, get_card, get_all_by_method_and_user
+from app.models.cards import upload_book, get_card, get_all_by_method_and_user, get_all_cards_for_user
 from app.models.books import get_book
+from app.models.like import add_like, is_liked, get_all_user_likes
 from app.models.users import get_user, update_user
 from flask import send_file, json, request
 from utils import image_to_url
@@ -129,15 +130,14 @@ def update_profile(user_id):
     update_user(user_id, user)
     return "success"
 
-
-@app.route('/items/<int:card_id>',methods=['POST'])
-def get_card_route(card_id):
+def card_to_dict(card_id):
     card = get_card(card_id)
     book_id = card.book_id
     seller_id = card.user_id
     book = get_book(book_id)
     seller = get_user(seller_id)
     dic = {
+        'id': str(card_id),
         'title': str(book.name),
         'author': str(book.writer_name),
         'book_image': str(card.image_address),
@@ -148,20 +148,48 @@ def get_card_route(card_id):
         'seller_name': str(seller.name),
         'seller_image': str(seller.image_address)
     }
+    return dic
+
+@app.route('/items/<int:card_id>', methods=['POST'])
+def get_card_route(card_id):
+    dic = card_to_dict(card_id)
     return json.dumps(dic)
 
 
+@app.route('/items/<int:card_id>/int:<user_id>', methods=['POST'])
+def get_card_with_like(card_id, user_id):
+    card_dic = card_to_dict(card_id)
+    liked = is_liked(card_id, user_id)
+    card_dic['isLiked'] = str(liked)
+    return json.dumps(card_dic)
+
+@app.route('/wishlist/int:<user_id>', methods=['POST', 'GET'])
+def get_wish_list(user_id):
+    likes = get_all_user_likes(user_id)
+    return json.dumps(likes)
+
+@app.route('/home/<int:<user_id>', methods=['POST', 'GET'])
+def get_home_page(user_id):
+    cards = get_all_cards_for_user(user_id)
+    lst = [card.id for card in cards]
+    return json.dumps(lst)
 @app.route('/items/exchange/<int:user_id>',methods=['POST'])
 def get_cards_exchange(user_id):
     all_cards = get_all_by_method_and_user('exchange', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
 
-@app.route('/items/sale/<int:user_id>',methods=['POST'])
+@app.route('/items/sale/<int:user_id>', methods=['POST'])
 def get_cards_sale(user_id):
     all_cards = get_all_by_method_and_user('sale', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
+
+
+@app.route('/like/int:<user_id>/int:<card_id>', methods=['POST', 'GET'])
+def do_like(user_id, card_id):
+    add_like(user_id, card_id)
+    return 'success'
 
 
 @app.route('/profile/<int:user_id>',methods=['POST'])
@@ -176,6 +204,7 @@ def get_user_route(user_id):
         'image_address': str(user.image_address)
     }
     return json.dumps(dic)
+
 @app.route('/genres/<int:user_id>', methods=['POST'])
 def upload_genres(user_id):
     msg_received = flask.request.get_json()
