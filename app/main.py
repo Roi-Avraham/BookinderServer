@@ -1,16 +1,17 @@
 from app import app, db, HOST
 import flask
-from app.models import Users, Books, Rates, Cards
+from app.models import Users, Books, Rates, Cards, Scans
 from app.models.cards import upload_book, get_card, get_all_by_method_and_user, get_all_cards_for_user
 from app.models.books import get_book
 from app.models.like import add_like, is_liked, get_all_user_likes
+from app.models.scans import update_scan, delete_scan
 from app.models.users import get_user, update_user
 from flask import send_file, json, request
-from utils import image_to_url
+from utils import image_to_url, scan_image, image_to_path
 import os
 ############################################################################
 with app.app_context():
-    db.drop_all()
+    # db.drop_all()
     db.create_all()
 ########################################################################
 @app.route('/', methods = ['GET', 'POST'])
@@ -50,7 +51,8 @@ def login(msg_received):
     if user is None:
         return "failure"
     else:
-        return str(user.id)
+        user_details = {"id": str(user.id), "name": user.name, "profile_picture": str(user.image_address)}
+        return json.dumps(user_details)
 
 @app.route('/addbookmanually', methods = ['GET', 'POST'])
 def add_book_manually():
@@ -156,22 +158,24 @@ def get_card_route(card_id):
     return json.dumps(dic)
 
 
-@app.route('/items/<int:card_id>/int:<user_id>', methods=['POST'])
+@app.route('/items/<int:card_id>/<int:user_id>', methods=['POST'])
 def get_card_with_like(card_id, user_id):
     card_dic = card_to_dict(card_id)
-    liked = is_liked(card_id, user_id)
+    liked = is_liked(user_id, card_id)
     card_dic['isLiked'] = str(liked)
     return json.dumps(card_dic)
 
-@app.route('/wishlist/int:<user_id>', methods=['POST', 'GET'])
+@app.route('/wishlist/<int:user_id>', methods=['POST', 'GET'])
 def get_wish_list(user_id):
     likes = get_all_user_likes(user_id)
+    print(likes)
     return json.dumps(likes)
 
-@app.route('/home/<int:<user_id>', methods=['POST', 'GET'])
+@app.route('/home/<int:user_id>', methods=['POST', 'GET'])
 def get_home_page(user_id):
     cards = get_all_cards_for_user(user_id)
     lst = [card.id for card in cards]
+    print("lst is : ", lst)
     return json.dumps(lst)
 @app.route('/items/exchange/<int:user_id>',methods=['POST'])
 def get_cards_exchange(user_id):
@@ -186,7 +190,7 @@ def get_cards_sale(user_id):
     return json.dumps(lst)
 
 
-@app.route('/like/int:<user_id>/int:<card_id>', methods=['POST', 'GET'])
+@app.route('/like/<int:user_id>/<int:card_id>', methods=['POST', 'GET'])
 def do_like(user_id, card_id):
     add_like(user_id, card_id)
     return 'success'
@@ -213,6 +217,59 @@ def upload_genres(user_id):
     user.fave_genres = genres
     update_user(user_id,user)
     return "success"
+
+@app.route('/scan_book/<int:user_id>', methods=['POST'])
+def scan_book_route(user_id):
+    book_data = request.form['card']
+    image = request.files['image']
+    host = request.headers['Host']
+    image_path = image_to_path(image, 'book', 'scan1')
+    result_scan = scan_image(image_path)
+    print(result_scan)
+    if result_scan["Status"] == "Failed":
+        return result_scan
+    else:
+        title = result_scan["Title"]
+        author = result_scan["Author"]
+        genre = result_scan["Genre"]
+        s = Scans(user_id=user_id, title=title, author=author, genre=genre)
+        update_scan(s)
+        return result_scan
+
+
+@app.route('/approve_scan/<int:user_id>', methods=['POST'])
+def approve_scan(user_id):
+    try:
+        s = Scans.query.filter_by(user_id=user_id).first()
+        title = s.title
+        author = s.author
+        genre = s.genre
+        if len(Books.query.filter_by(name=title).all()) == 0:
+            new_book = Books(name=title, writer_name=author, genre=genre)
+            try:
+                db.session.add(new_book)
+                db.session.commit()
+            except Exception as e:
+                print("Error while inserting the new record :", repr(e))
+        book_id = Books.query.filter_by(name=title).first().id
+        new_rate = Rates(user_id=user_id, book_id=book_id, rate=5)
+        try:
+            db.session.add(new_rate)
+            db.session.commit()
+            delete_scan(s)
+        except Exception as e:
+            print("Error while inserting the new record :", repr(e))
+        return 'success'
+    except:
+        return 'Failed'
+
+
+@app.route('/not_approve_scan/<int:user_id>', methods=['POST'])
+def not_approve_scan(user_id):
+    s = Scans.query.filter_by(user_id=user_id).first()
+    delete_scan(s)
+    return 'success'
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=HOST, debug=True, threaded=True)
