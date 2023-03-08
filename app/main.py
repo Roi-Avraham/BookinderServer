@@ -1,20 +1,27 @@
+from sqlalchemy import exists
+
 from app import app, db, HOST
 import flask
 from app.models import Users, Books, Rates, Cards, Scans
 from app.models.cards import upload_book, get_card, get_all_by_method_and_user, get_all_cards_for_user
 from app.models.books import get_book
+from app.models.chats import get_all_contacts, Chats
 from app.models.like import add_like, is_liked, get_all_user_likes
+from app.models.messages import get_all_messages, get_message
 from app.models.scans import update_scan, delete_scan
 from app.models.users import get_user, update_user
-from flask import send_file, json, request
+from flask import send_file, json, request, session
 from utils import image_to_url, scan_image, image_to_path
 import os
+
 ############################################################################
 with app.app_context():
     # db.drop_all()
     db.create_all()
+
+
 ########################################################################
-@app.route('/', methods = ['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def start():
     msg_received = flask.request.get_json()
     msg_subject = msg_received["subject"]
@@ -26,6 +33,7 @@ def start():
     else:
         return "Invalid request."
 
+
 def register(msg_received):
     name = msg_received["name"]
     email = msg_received["email"]
@@ -33,9 +41,9 @@ def register(msg_received):
     phone = msg_received["phone"]
     age = msg_received["age"]
 
-    if(len(Users.query.filter_by(email=email).all()) != 0):
+    if (len(Users.query.filter_by(email=email).all()) != 0):
         return "Another user used this email. Please chose another email."
-    user = Users(name=name, email=email, password=password, phone_number=phone,age=age)
+    user = Users(name=name, email=email, password=password, phone_number=phone, age=age)
     try:
         db.session.add(user)
         db.session.commit()
@@ -44,17 +52,19 @@ def register(msg_received):
         print("Error while inserting the new record :", repr(e))
         return "failure"
 
+
 def login(msg_received):
     email = msg_received["username"]
     password = msg_received["password"]
-    user = Users.query.filter_by(email=email, password =password).first()
+    user = Users.query.filter_by(email=email, password=password).first()
     if user is None:
         return "failure"
     else:
         user_details = {"id": str(user.id), "name": user.name, "profile_picture": str(user.image_address)}
         return json.dumps(user_details)
 
-@app.route('/addbookmanually', methods = ['GET', 'POST'])
+
+@app.route('/addbookmanually', methods=['GET', 'POST'])
 def add_book_manually():
     msg_received = flask.request.get_json()
     user_id = msg_received["current_user"]
@@ -71,7 +81,7 @@ def add_book_manually():
         except Exception as e:
             print("Error while inserting the new record :", repr(e))
             return "failure"
-    book_id = Books.query.filter_by(name = name_of_book).first().id
+    book_id = Books.query.filter_by(name=name_of_book).first().id
     new_rate = Rates(user_id=user_id, book_id=book_id, rate=rate)
     try:
         db.session.add(new_rate)
@@ -81,14 +91,15 @@ def add_book_manually():
         print("Error while inserting the new record :", repr(e))
         return "failure"
 
-@app.route('/getBooksYouEntered', methods = ['GET', 'POST'])
+
+@app.route('/getBooksYouEntered', methods=['GET', 'POST'])
 def get_books_you_entered():
     msg_received = flask.request.get_json()
     user_id = msg_received["current_user"]
 
     love_book = {}
     all_rates = Rates.query.filter_by(user_id=user_id).all()
-    if(len(all_rates) != 0):
+    if (len(all_rates) != 0):
         index = 0
         love_book["number"] = str(len(all_rates))
         for element in all_rates:
@@ -103,10 +114,10 @@ def get_books_you_entered():
     return json.dumps(love_book)
 
 
-@app.route('/images/<image_name>',methods=['GET'])
+@app.route('/images/<image_name>', methods=['GET'])
 def get_image(image_name):
-    im_path = os.path.join('..','resources', 'images', image_name)
-    #im_path = 'resources/images/' + image_name
+    im_path = os.path.join('..', 'resources', 'images', image_name)
+    # im_path = 'resources/images/' + image_name
     if os.path.exists(im_path):
         image = open(im_path, 'rb')
         # Send the image data back to the client
@@ -132,6 +143,7 @@ def update_profile(user_id):
     update_user(user_id, user)
     return "success"
 
+
 def card_to_dict(card_id):
     card = get_card(card_id)
     book_id = card.book_id
@@ -152,6 +164,7 @@ def card_to_dict(card_id):
     }
     return dic
 
+
 @app.route('/items/<int:card_id>', methods=['POST'])
 def get_card_route(card_id):
     dic = card_to_dict(card_id)
@@ -165,11 +178,13 @@ def get_card_with_like(card_id, user_id):
     card_dic['isLiked'] = str(liked)
     return json.dumps(card_dic)
 
+
 @app.route('/wishlist/<int:user_id>', methods=['POST', 'GET'])
 def get_wish_list(user_id):
     likes = get_all_user_likes(user_id)
     print(likes)
     return json.dumps(likes)
+
 
 @app.route('/home/<int:user_id>', methods=['POST', 'GET'])
 def get_home_page(user_id):
@@ -177,17 +192,28 @@ def get_home_page(user_id):
     lst = [card.id for card in cards]
     print("lst is : ", lst)
     return json.dumps(lst)
-@app.route('/items/exchange/<int:user_id>',methods=['POST'])
+
+
+@app.route('/items/exchange/<int:user_id>', methods=['POST'])
 def get_cards_exchange(user_id):
     all_cards = get_all_by_method_and_user('exchange', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
+
 
 @app.route('/items/sale/<int:user_id>', methods=['POST'])
 def get_cards_sale(user_id):
     all_cards = get_all_by_method_and_user('sale', user_id)
     lst = [card.id for card in all_cards]
     return json.dumps(lst)
+
+@app.route('/item/delete/<int:card_id>', methods=['POST'])
+def delete_card_item(card_id):
+    card = get_card(card_id)
+    db.session.delete(card)
+    db.session.commit()
+    return "success"
+
 
 
 @app.route('/like/<int:user_id>/<int:card_id>', methods=['POST', 'GET'])
@@ -196,7 +222,7 @@ def do_like(user_id, card_id):
     return 'success'
 
 
-@app.route('/profile/<int:user_id>',methods=['POST'])
+@app.route('/profile/<int:user_id>', methods=['POST'])
 def get_user_route(user_id):
     user = get_user(user_id)
     dic = {
@@ -205,9 +231,22 @@ def get_user_route(user_id):
         'phone': str(user.phone_number),
         'mail': str(user.email),
         'genres': user.fave_genres,
-        'image_address': str(user.image_address)
+        'image_address': str(user.image_address),
+        'user_id': str(user_id)
     }
     return json.dumps(dic)
+
+
+@app.route('/get_contact/<int:user_id>', methods=['POST'])
+def get_contact(user_id):
+    user = get_user(user_id)
+    dic = {
+        'name': user.name,
+        'image_address': str(user.image_address),
+        'user_id': str(user_id)
+    }
+    return json.dumps(dic)
+
 
 @app.route('/genres/<int:user_id>', methods=['POST'])
 def upload_genres(user_id):
@@ -215,8 +254,9 @@ def upload_genres(user_id):
     genres = msg_received["genres"]
     user = get_user(user_id)
     user.fave_genres = genres
-    update_user(user_id,user)
+    update_user(user_id, user)
     return "success"
+
 
 @app.route('/scan_book/<int:user_id>', methods=['POST'])
 def scan_book_route(user_id):
@@ -271,6 +311,39 @@ def not_approve_scan(user_id):
     return 'success'
 
 
+@app.route('/contacts/<int:user_id>', methods=['POST'])
+def contacts(user_id):
+    return get_all_contacts(user_id)
+
+
+@app.route('/messages/<int:user_one>/<int:user_two>', methods=['POST'])
+def messages(user_one, user_two):
+    return get_all_messages(user_one, user_two)
+
+
+@app.route('/messages/<int:message_id>', methods=['POST'])
+def message(message_id):
+    current_message = get_message(message_id)
+    dic = {
+        'sender': current_message.sender,
+        'receiver': current_message.receiver,
+        'message': current_message.message,
+    }
+    return json.dumps(dic)
+
+
+@app.route('/create_chat/<int:my_id>/<int:other_id>', methods=['POST'])
+def create_chat(my_id, other_id):
+    if (len(Chats.query.filter_by(first_person=my_id, second_person=other_id).all()) == 0
+            and len(Chats.query.filter_by(first_person=other_id, second_person=my_id).all()) == 0):
+        new_chat = Chats(first_person=my_id, second_person=other_id)
+        try:
+            db.session.add(new_chat)
+            db.session.commit()
+        except Exception as e:
+            print("Error while inserting the new record :", repr(e))
+    return "success"
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=HOST, debug=True, threaded=True)
-
